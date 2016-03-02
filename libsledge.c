@@ -9,12 +9,13 @@
   Date: 3/2/2016
 */
 
+#define __USE_GNU
 #define _GNU_SOURCE
 
+#include <dlfcn.h>
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <dlfcn.h>
 
 #ifndef FAIL_PROB
 #define FAIL_PROB 50
@@ -36,11 +37,12 @@ void * malloc(size_t sz)
 {
   if (NULL == libc_malloc) {
     init_malloc();
+    srand(time(NULL));
   }
-  srand(time(NULL));
-  if ((rand() % 100) > FAIL_PROB) {
+  if ((rand() % 100) + 1 > FAIL_PROB) {
     return NULL;
   } else {
-    return malloc(sz); 
+    return libc_malloc(sz); 
   }
 }
+
