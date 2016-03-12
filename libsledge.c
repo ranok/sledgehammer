@@ -22,17 +22,21 @@
 #endif // Ends FAIL_PROB
 
 static void * (*libc_malloc)(size_t) = NULL;
+static void * (*libc_calloc)(size_t, size_t) = NULL;
+static void * (*libc_realloc)(void *, size_t) = NULL;
 
-static void init_malloc(void)
-{
-  libc_malloc = dlsym(RTLD_NEXT, "malloc");
-  if (NULL == libc_malloc) {
-    fprintf(stderr, "Unable to find libc's malloc: %s\r\n", dlerror());
-    exit(-1);
-  }
+#define REPLACE(func) \
+static void init_ ## func(void) \
+{ \
+  libc_ ## func = dlsym(RTLD_NEXT, #func); \
+  if (NULL == libc_ ## func) { \
+    fprintf(stderr, "Unable to find libc's " #func ": %s\r\n", dlerror()); \
+    exit(-1); \
+  } \
 }
 
-/* Overload malloc() system call to randomly fail */
+REPLACE(malloc)
+
 void * malloc(size_t sz) 
 {
   if (NULL == libc_malloc) {
@@ -46,3 +50,32 @@ void * malloc(size_t sz)
   }
 }
 
+REPLACE(calloc)
+
+void * calloc(size_t num, size_t sz) 
+{
+  if (NULL == libc_calloc) {
+    init_calloc();
+    srand(time(NULL));
+  }
+  if ((rand() % 100) + 1 > FAIL_PROB) {
+    return NULL;
+  } else {
+    return libc_calloc(num, sz); 
+  }
+}
+
+REPLACE(realloc)
+
+void * realloc(void * ptr, size_t sz)
+{
+  if (NULL == libc_realloc) {
+    init_realloc();
+    srand(time(NULL));
+  }
+  if ((rand() % 100) + 1 > FAIL_PROB) {
+    return NULL;
+  } else {
+    return libc_realloc(ptr, sz);
+  }
+}
