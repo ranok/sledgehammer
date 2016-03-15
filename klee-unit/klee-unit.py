@@ -1,5 +1,14 @@
 #!/usr/bin/env python
 
+#########################################################################################
+# KLEE-Unit
+# Author: Jacob Torrey
+# Date: 3/15/2016
+#
+# Script to auto-generate test harness and execute symbolically with KLEE for a passed C
+# file
+#########################################################################################
+
 import sys
 import subprocess
 from pycparser import c_parser, c_ast
@@ -12,7 +21,11 @@ def run_klee(filename):
     '''Runs KLEE on a given file'''
     return subprocess.call(['klee', '--libc=uclibc', '--posix-runtime', filename])
 
-def compile(filename, outname = 'kleeunit.bc'):
+def generate_c(func):
+    '''Generates a test harness and temp C file for a passed function'''
+    
+
+def compile_c(filename, outname = 'kleeunit.bc'):
     '''Compiles for execution with KLEE'''
     return subprocess.call(['clang', '-g', '--emit-llvm', '-c', filename, '-o', outname])
 
@@ -82,7 +95,16 @@ def controller():
         sys.exit(-1)
     filename = sys.argv[1]
     run_ctags(filename)
-    print str(parse_ctags())
+    funcs = parse_ctags()
 
+    for f in funcs:
+        if f[0] == 'main':
+            continue
+        fn = generate_c(f)
+        compile_c(fn, fn + '.bc')
+        run_klee(fn + '.bc')
+
+    collect_klee_runs()
+        
 if __name__ == "__main__":
     controller()
