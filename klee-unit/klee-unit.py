@@ -24,7 +24,7 @@ def collect_klee_runs():
     col = {'ptr': 0, 'free': 0, 'div': 0, 'abort': 0, 'assert': 0, 'user': 0, 'model': 0, 'exec': 0}
     for e in errs:
         e = re.sub(r'\.err', '', e)
-        e = re.sub(r'^test.*[0-9]\.', '', e)
+        e = re.sub(r'^.*test.*[0-9]\.', '', e)
         col[e] += 1
     print "Found " + str(len(errs)) + " errors in file"
     print str(col)
