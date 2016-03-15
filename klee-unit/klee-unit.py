@@ -14,15 +14,24 @@ import os
 import shutil
 import re
 import subprocess
+from glob import glob
 from pycparser import c_parser, c_ast
 from ctags import CTags, TagEntry
 
 def collect_klee_runs():
     '''Navigates all KLEE output directories and performs basic triage'''
+    errs = glob('klee-out-*/*.err')
+    col = {'ptr': 0, 'free': 0, 'div': 0, 'abort': 0, 'assert': 0, 'user': 0, 'model': 0, 'exec': 0}
+    for e in errs:
+        e = re.sub(r'\.err', '', e)
+        e = re.sub(r'^test.*[0-9]\.', '', e)
+        col[e] += 1
+    print "Found " + str(len(errs)) + " errors in file"
+    print str(col)
 
-def run_klee(filename):
+def run_klee(filename, maxs = 180):
     '''Runs KLEE on a given file'''
-    return subprocess.call(['klee', '--libc=uclibc', '--posix-runtime', filename])
+    return subprocess.call(['klee', '--libc=uclibc', '--posix-runtime', '-max-time=' + str(maxs), filename])
 
 def generate_c(filename, func):
     '''Generates a test harness and temp C file for a passed function'''
