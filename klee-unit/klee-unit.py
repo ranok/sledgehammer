@@ -10,6 +10,9 @@
 #########################################################################################
 
 import sys
+import os
+import shutil
+import re
 import subprocess
 from pycparser import c_parser, c_ast
 from ctags import CTags, TagEntry
@@ -21,13 +24,47 @@ def run_klee(filename):
     '''Runs KLEE on a given file'''
     return subprocess.call(['klee', '--libc=uclibc', '--posix-runtime', filename])
 
-def generate_c(func):
+def generate_c(filename, func):
     '''Generates a test harness and temp C file for a passed function'''
-    
+    # Copy to duplicate safe to trash
+    newfn = filename[:-2] + "_" + func[0] + '.c'
+    shutil.copyfile(filename, newfn)
+
+    # Rename main() to something not conflicting
+    f = open(newfn, 'r')
+    c = f.read()
+    f.close()
+    c = re.sub(r' main\s?\(', ' not_main(', c)
+    c = c + "\r\n\r\n"
+
+    # Generate our own main() using symbolic variables for every function argument
+    main = "int main(int argc, char **argv) {\r\n"
+    i = 0
+    fc = func[0] + "("
+    for f in func[1][1]:
+        vn = 'var' + str(i)
+        fc += vn + ", "
+        vl = f + " " + vn + ";\r\n"
+        vl += "klee_make_symbolic(" + vn + ", sizeof(" + f + "), \"" + vn + "\");\r\n"
+        i += 1
+        main += vl
+    fc = fc[:-2] + ");\r\n"
+    main += fc
+    main += "return 0;\r\n}\r\n"
+    c += main
+    # Inject into temp file
+    f = open(newfn, 'w')
+    f.write(c)
+    f.close()
+
+    # Return temp file name
+    return newfn
 
 def compile_c(filename, outname = 'kleeunit.bc'):
     '''Compiles for execution with KLEE'''
-    return subprocess.call(['clang', '-g', '--emit-llvm', '-c', filename, '-o', outname])
+    ret = subprocess.call(['clang', '-g', '-emit-llvm', '-c', filename, '-o', outname])
+    #os.remove(filename)
+    return ret
 
 def run_ctags(filename):
     '''Executes the ctags command on the passed filename to generate the tags file'''
@@ -100,7 +137,7 @@ def controller():
     for f in funcs:
         if f[0] == 'main':
             continue
-        fn = generate_c(f)
+        fn = generate_c(filename, f)
         compile_c(fn, fn + '.bc')
         run_klee(fn + '.bc')
 
