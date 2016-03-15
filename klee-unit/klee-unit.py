@@ -45,7 +45,7 @@ def generate_c(filename, func):
         vn = 'var' + str(i)
         fc += vn + ", "
         vl = f + " " + vn + ";\r\n"
-        vl += "klee_make_symbolic(" + vn + ", sizeof(" + f + "), \"" + vn + "\");\r\n"
+        vl += "klee_make_symbolic(&" + vn + ", sizeof(" + f + "), \"" + vn + "\");\r\n"
         i += 1
         main += vl
     fc = fc[:-2] + ");\r\n"
